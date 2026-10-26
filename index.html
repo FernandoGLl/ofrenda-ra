@@ -4,18 +4,27 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Ofrenda Interactiva - Día de Muertos</title>
-  
-  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+  <!-- Versiones fijas y estables -->
+  <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.5/aframe/build/aframe-ar.js"></script>
 
   <style>
-    body { margin: 0; overflow: hidden; font-family: sans-serif; }
-    
-    #ui-layer {
-      position: absolute;
-      bottom: 0;
+    html, body {
+      margin: 0;
+      padding: 0;
       width: 100%;
-      height: 100vh;
+      height: 100%;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+
+    #ui-layer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       pointer-events: none;
       display: flex;
       flex-direction: column;
@@ -30,9 +39,10 @@
       padding: 15px;
       border-radius: 8px;
       margin-bottom: auto;
-      margin-top: 20px;
+      margin-top: 60px;
       font-weight: bold;
       display: block;
+      text-align: center;
     }
 
     #controls {
@@ -56,28 +66,123 @@
       border-radius: 5px;
       cursor: pointer;
     }
-
     button:active { background-color: #cc7000; }
+
+    /* Panel de depuración */
+    #debug-panel {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      max-height: 35%;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.75);
+      color: #0f0;
+      font-family: monospace;
+      font-size: 11px;
+      line-height: 1.3;
+      padding: 4px 6px;
+      box-sizing: border-box;
+      z-index: 9999;
+      pointer-events: none;
+      display: none;
+    }
+    #debug-panel .err { color: #ff5252; }
+    #debug-panel .warn { color: #ffd740; }
   </style>
 
   <script>
+    // ===== DEPURACIÓN =====
+    // Pon false para ocultar el panel cuando todo funcione.
+    // También puedes forzarlo con la URL: ...index.html?debug=1
+    const DEBUG = true;
+
+    function dbg(msg, cls) {
+      const panel = document.getElementById('debug-panel');
+      if (!panel) return;
+      const line = document.createElement('div');
+      if (cls) line.className = cls;
+      const t = new Date().toLocaleTimeString();
+      line.textContent = '[' + t + '] ' + msg;
+      panel.appendChild(line);
+      panel.scrollTop = panel.scrollHeight;
+    }
+
+    window.addEventListener('error', function (e) {
+      dbg('ERROR JS: ' + e.message + ' (' + (e.filename || '').split('/').pop() + ':' + e.lineno + ')', 'err');
+    });
+    window.addEventListener('unhandledrejection', function (e) {
+      dbg('PROMESA RECHAZADA: ' + (e.reason && e.reason.message ? e.reason.message : e.reason), 'err');
+    });
+
+    window.addEventListener('DOMContentLoaded', function () {
+      if (DEBUG || location.search.indexOf('debug=1') !== -1) {
+        document.getElementById('debug-panel').style.display = 'block';
+      }
+
+      dbg('Página cargada');
+      dbg('AFRAME: ' + (window.AFRAME ? AFRAME.version : 'NO CARGÓ'), window.AFRAME ? '' : 'err');
+      dbg('AR.js (THREEx): ' + (window.THREEx ? 'OK' : 'NO CARGÓ'), window.THREEx ? '' : 'err');
+      dbg('HTTPS: ' + (location.protocol === 'https:' ? 'sí' : 'NO (la cámara no funciona sin HTTPS)'),
+          location.protocol === 'https:' ? '' : 'err');
+
+      // Verificar cámara
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        dbg('Este navegador no soporta getUserMedia (cámara)', 'err');
+      } else {
+        dbg('Pidiendo permiso de cámara...');
+      }
+
+      // Verificar que existan los archivos (HEAD)
+      ['video_pan.mp4', 'video_calavera.mp4', 'pattern-PanMuertosIC.patt', 'pattern-CalaveralC.patt']
+        .forEach(function (f) {
+          fetch(f, { method: 'HEAD' })
+            .then(function (r) {
+              const size = r.headers.get('content-length');
+              dbg(f + ' -> HTTP ' + r.status + (size ? ' (' + Math.round(size / 1024) + ' KB)' : ''),
+                  r.ok ? '' : 'err');
+            })
+            .catch(function (err) { dbg(f + ' -> falló: ' + err.message, 'err'); });
+        });
+
+      // Estado de los videos
+      document.querySelectorAll('video').forEach(function (v) {
+        v.addEventListener('loadeddata', function () { dbg(v.id + ': cargado OK'); });
+        v.addEventListener('error', function () {
+          const c = v.error ? v.error.code : '?';
+          dbg(v.id + ': ERROR al cargar (código ' + c + ')', 'err');
+        });
+      });
+
+      // Eventos de la escena
+      const scene = document.querySelector('a-scene');
+      scene.addEventListener('loaded', function () { dbg('Escena A-Frame lista'); });
+      scene.addEventListener('camera-init', function () { dbg('Cámara iniciada OK'); });
+      scene.addEventListener('camera-error', function (e) {
+        dbg('ERROR DE CÁMARA: ' + (e.detail && e.detail.error ? e.detail.error.name + ' ' + e.detail.error.message : 'desconocido'), 'err');
+      });
+    });
+
+    // ===== LÓGICA DE LA EXPERIENCIA =====
     window.activeMarker = null;
 
     AFRAME.registerComponent('ar-controller', {
       init: function () {
-        let marker = this.el;
-        
-        marker.addEventListener('markerFound', function() {
+        const marker = this.el;
+
+        marker.addEventListener('markerFound', function () {
           document.getElementById('warning-msg').style.display = 'none';
           document.getElementById('controls').style.display = 'block';
           window.activeMarker = marker.id;
+          dbg('Marcador detectado: ' + marker.id, 'warn');
         });
 
-        marker.addEventListener('markerLost', function() {
+        marker.addEventListener('markerLost', function () {
           document.getElementById('warning-msg').style.display = 'block';
           document.getElementById('controls').style.display = 'none';
           window.activeMarker = null;
-          
+          dbg('Marcador perdido: ' + marker.id);
+
           document.querySelectorAll('.info-text').forEach(el => el.setAttribute('visible', 'false'));
           document.querySelectorAll('a-video').forEach(el => el.setAttribute('visible', 'false'));
           document.querySelectorAll('video').forEach(vid => vid.pause());
@@ -99,14 +204,17 @@
     function reproducirVideo() {
       document.querySelectorAll('.info-text').forEach(el => el.setAttribute('visible', 'false'));
 
-      let vidId = (window.activeMarker === 'marker-pan') ? 'vid-pan' : 'vid-calavera';
-      let dispId = (window.activeMarker === 'marker-pan') ? 'display-pan' : 'display-calavera';
+      const vidId = (window.activeMarker === 'marker-pan') ? 'vid-pan' : 'vid-calavera';
+      const dispId = (window.activeMarker === 'marker-pan') ? 'display-pan' : 'display-calavera';
 
-      let vid = document.getElementById(vidId);
+      const vid = document.getElementById(vidId);
       document.getElementById(dispId).setAttribute('visible', 'true');
-      
-      vid.play().catch(error => {
-        console.log("Error al reproducir video:", error);
+
+      dbg('Reproduciendo ' + vidId + ' (readyState=' + vid.readyState + ')');
+      vid.play().then(function () {
+        dbg('Video en reproducción');
+      }).catch(function (error) {
+        dbg('No se pudo reproducir: ' + error.message, 'err');
       });
     }
 
@@ -122,6 +230,8 @@
 </head>
 <body>
 
+  <div id="debug-panel"></div>
+
   <div id="ui-layer">
     <div id="warning-msg">⚠️ Marcador perdido. Apunta al objeto para continuar.</div>
     <div id="controls">
@@ -131,11 +241,18 @@
     </div>
   </div>
 
-  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
-    
+  <a-scene
+    vr-mode-ui="enabled: false"
+    renderer="logarithmicDepthBuffer: true; alpha: true;"
+    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; trackingMethod: best;">
+
     <a-assets>
-      <video id="vid-pan" src="video_pan.mp4" crossorigin="anonymous" playsinline webkit-playsinline></video>
-      <video id="vid-calavera" src="video_calavera.mp4" crossorigin="anonymous" playsinline webkit-playsinline></video>
+      <video id="vid-pan" src="video_pan.mp4" preload="auto" loop crossorigin="anonymous"
+             playsinline webkit-playsinline
+             onerror="dbg('No carga video_pan.mp4', 'err')"></video>
+      <video id="vid-calavera" src="video_calavera.mp4" preload="auto" loop crossorigin="anonymous"
+             playsinline webkit-playsinline
+             onerror="dbg('No carga video_calavera.mp4', 'err')"></video>
     </a-assets>
 
     <!-- Marcador 1: Pan de Muerto -->
