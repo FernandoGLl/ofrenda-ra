@@ -47,7 +47,7 @@
 
     #controls {
       background: rgba(0, 0, 0, 0.7);
-      padding: 20px;
+      padding: 16px;
       border-radius: 15px 15px 0 0;
       width: 100%;
       box-sizing: border-box;
@@ -67,6 +67,35 @@
       cursor: pointer;
     }
     button:active { background-color: #cc7000; }
+
+    /* Recuadro de "Leer Historia" (HTML normal: no usa texto 3D, así no se traba) */
+    #story-box {
+      position: fixed;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(92%, 520px);
+      box-sizing: border-box;
+      background: rgba(0, 0, 0, 0.82);
+      color: #ffffff;
+      border: 2px solid #ff8c00;
+      border-radius: 14px;
+      padding: 14px 16px;
+      font-size: 16px;
+      line-height: 1.45;
+      display: none;
+      z-index: 20;
+      pointer-events: none;
+    }
+    #story-box h2 {
+      margin: 0 0 8px 0;
+      font-size: 20px;
+      color: #ff8c00;
+    }
+    #story-box p { margin: 0; }
+
+    /* Botones de ajuste: solo visibles en modo depuración */
+    #ajustes { display: none; }
 
     /* Panel de depuración */
     #debug-panel {
@@ -93,18 +122,20 @@
 
   <script>
     // ===== DEPURACIÓN =====
-    // Pon false para ocultar el panel cuando todo funcione.
-    // También puedes forzarlo con la URL: ...index.html?debug=1
-    const DEBUG = true;
+    // Panel apagado por defecto. Para verlo abre la página con ?debug=1
+    // o cambia false por true aquí.
+    const DEBUG = false;
+    const MODO_DEBUG = DEBUG || location.search.indexOf('debug=1') !== -1;
 
     function dbg(msg, cls) {
+      if (!MODO_DEBUG) return;
       const panel = document.getElementById('debug-panel');
       if (!panel) return;
       const line = document.createElement('div');
       if (cls) line.className = cls;
-      const t = new Date().toLocaleTimeString();
-      line.textContent = '[' + t + '] ' + msg;
+      line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
       panel.appendChild(line);
+      while (panel.children.length > 60) panel.removeChild(panel.firstChild);
       panel.scrollTop = panel.scrollHeight;
     }
 
@@ -116,23 +147,14 @@
     });
 
     window.addEventListener('DOMContentLoaded', function () {
-      if (DEBUG || location.search.indexOf('debug=1') !== -1) {
+      if (MODO_DEBUG) {
         document.getElementById('debug-panel').style.display = 'block';
+        document.getElementById('ajustes').style.display = 'block';
       }
 
       dbg('Página cargada');
       dbg('AFRAME: ' + (window.AFRAME ? AFRAME.version : 'NO CARGÓ'), window.AFRAME ? '' : 'err');
-      dbg('HTTPS: ' + (location.protocol === 'https:' ? 'sí' : 'NO (la cámara no funciona sin HTTPS)'),
-          location.protocol === 'https:' ? '' : 'err');
 
-      // Verificar cámara
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        dbg('Este navegador no soporta getUserMedia (cámara)', 'err');
-      } else {
-        dbg('Pidiendo permiso de cámara...');
-      }
-
-      // Verificar que existan los archivos (HEAD)
       ['video_pan.mp4', 'video_calavera.mp4', 'pattern-PanMuertosIC.patt?v=3', 'pattern-CalaveraIC.patt?v=3']
         .forEach(function (f) {
           fetch(f, { method: 'HEAD' })
@@ -144,26 +166,44 @@
             .catch(function (err) { dbg(f + ' -> falló: ' + err.message, 'err'); });
         });
 
-      // Estado de los videos
       document.querySelectorAll('video').forEach(function (v) {
         v.addEventListener('loadeddata', function () { dbg(v.id + ': cargado OK'); });
         v.addEventListener('error', function () {
-          const c = v.error ? v.error.code : '?';
-          dbg(v.id + ': ERROR al cargar (código ' + c + ')', 'err');
+          dbg(v.id + ': ERROR al cargar (código ' + (v.error ? v.error.code : '?') + ')', 'err');
         });
       });
 
-      // Eventos de la escena
       const scene = document.querySelector('a-scene');
       scene.addEventListener('loaded', function () { dbg('Escena A-Frame lista'); });
-      scene.addEventListener('camera-init', function () { dbg('Cámara iniciada OK'); });
       scene.addEventListener('camera-error', function (e) {
         dbg('ERROR DE CÁMARA: ' + (e.detail && e.detail.error ? e.detail.error.name + ' ' + e.detail.error.message : 'desconocido'), 'err');
       });
     });
 
+    // ===== TEXTOS DE "LEER HISTORIA" =====
+    // Para intercambiar quién va con cada marcador, cambia las claves.
+    const HISTORIAS = {
+      'marker-pan': {
+        titulo: 'Charles Babbage (1791–1871)',
+        texto: 'Matemático e inventor inglés, considerado el padre de la computación por idear y diseñar la primera máquina analítica, considerada el concepto inicial de un ordenador programable.'
+      },
+      'marker-calavera': {
+        titulo: 'Ada Lovelace (1815–1852)',
+        texto: 'Matemática y escritora inglesa, reconocida como la primera programadora de la historia por escribir un algoritmo destinado a la máquina analítica de Babbage.'
+      }
+    };
+
     // ===== LÓGICA DE LA EXPERIENCIA =====
     window.activeMarker = null;
+
+    function ocultarHistoria() {
+      document.getElementById('story-box').style.display = 'none';
+    }
+
+    function ocultarVideos() {
+      document.querySelectorAll('a-video').forEach(function (el) { el.setAttribute('visible', 'false'); });
+      document.querySelectorAll('video').forEach(function (vid) { vid.pause(); });
+    }
 
     AFRAME.registerComponent('ar-controller', {
       init: function () {
@@ -171,7 +211,6 @@
         let lostTimer = null;
 
         marker.addEventListener('markerFound', function () {
-          // Si se había programado "perdido", se cancela (evita parpadeos)
           if (lostTimer) { clearTimeout(lostTimer); lostTimer = null; }
           document.getElementById('warning-msg').style.display = 'none';
           document.getElementById('controls').style.display = 'block';
@@ -181,25 +220,57 @@
 
         marker.addEventListener('markerLost', function () {
           dbg('Marcador perdido: ' + marker.id);
-          // Espera 1.5 s antes de ocultar todo: si vuelve a detectarse, no pasa nada
+          // Espera 1.5 s antes de ocultar todo, por si solo fue un parpadeo
           if (lostTimer) clearTimeout(lostTimer);
           lostTimer = setTimeout(function () {
             lostTimer = null;
             document.getElementById('warning-msg').style.display = 'block';
             document.getElementById('controls').style.display = 'none';
             if (window.activeMarker === marker.id) window.activeMarker = null;
-
-            document.querySelectorAll('.info-text').forEach(el => el.setAttribute('visible', 'false'));
-            document.querySelectorAll('a-video').forEach(el => el.setAttribute('visible', 'false'));
-            document.querySelectorAll('video').forEach(vid => vid.pause());
+            ocultarHistoria();
+            ocultarVideos();
           }, 1500);
         });
       }
     });
 
-    // ===== AJUSTE DE ORIENTACIÓN Y TAMAÑO =====
-    // Usa los botones azules para encontrar el valor correcto y luego
-    // copia los números que aparecen en el panel a los atributos rotation y scale.
+    function mostrarTexto() {
+      ocultarVideos();
+      const h = HISTORIAS[window.activeMarker];
+      if (!h) { dbg('No hay historia para: ' + window.activeMarker, 'err'); return; }
+      document.getElementById('story-title').textContent = h.titulo;
+      document.getElementById('story-text').textContent = h.texto;
+      document.getElementById('story-box').style.display = 'block';
+    }
+
+    function reproducirVideo() {
+      ocultarHistoria();
+
+      const esPan = (window.activeMarker === 'marker-pan');
+      const esCal = (window.activeMarker === 'marker-calavera');
+      if (!esPan && !esCal) return;
+
+      const vid = document.getElementById(esPan ? 'vid-pan' : 'vid-calavera');
+      document.getElementById(esPan ? 'display-pan' : 'display-calavera').setAttribute('visible', 'true');
+
+      dbg('Reproduciendo ' + vid.id + ' (readyState=' + vid.readyState + ')');
+      vid.play().then(function () {
+        dbg('Video en reproducción');
+      }).catch(function (error) {
+        dbg('No se pudo reproducir: ' + error.message, 'err');
+      });
+    }
+
+    function reiniciarExperiencia() {
+      document.querySelectorAll('video').forEach(function (vid) {
+        vid.pause();
+        vid.currentTime = 0;
+      });
+      ocultarVideos();
+      ocultarHistoria();
+    }
+
+    // ===== AJUSTE DE ORIENTACIÓN Y TAMAÑO DEL VIDEO (solo con ?debug=1) =====
     let contentRot = 0;
     let contentScale = 1.5;
 
@@ -212,48 +283,16 @@
     }
     function rotarContenido() { contentRot = (contentRot + 90) % 360; aplicarAjuste(); }
     function cambiarEscala(f) { contentScale = Math.max(0.3, Math.min(6, contentScale * f)); aplicarAjuste(); }
-
-    function mostrarTexto() {
-      document.querySelectorAll('a-video').forEach(el => el.setAttribute('visible', 'false'));
-      document.querySelectorAll('video').forEach(vid => vid.pause());
-
-      if (window.activeMarker === 'marker-pan') {
-        document.getElementById('text-pan').setAttribute('visible', 'true');
-      } else if (window.activeMarker === 'marker-calavera') {
-        document.getElementById('text-calavera').setAttribute('visible', 'true');
-      }
-    }
-
-    function reproducirVideo() {
-      document.querySelectorAll('.info-text').forEach(el => el.setAttribute('visible', 'false'));
-
-      const vidId = (window.activeMarker === 'marker-pan') ? 'vid-pan' : 'vid-calavera';
-      const dispId = (window.activeMarker === 'marker-pan') ? 'display-pan' : 'display-calavera';
-
-      const vid = document.getElementById(vidId);
-      document.getElementById(dispId).setAttribute('visible', 'true');
-
-      dbg('Reproduciendo ' + vidId + ' (readyState=' + vid.readyState + ')');
-      vid.play().then(function () {
-        dbg('Video en reproducción');
-      }).catch(function (error) {
-        dbg('No se pudo reproducir: ' + error.message, 'err');
-      });
-    }
-
-    function reiniciarExperiencia() {
-      document.querySelectorAll('video').forEach(vid => {
-        vid.pause();
-        vid.currentTime = 0;
-      });
-      document.querySelectorAll('a-video').forEach(el => el.setAttribute('visible', 'false'));
-      document.querySelectorAll('.info-text').forEach(el => el.setAttribute('visible', 'false'));
-    }
   </script>
 </head>
 <body>
 
   <div id="debug-panel"></div>
+
+  <div id="story-box">
+    <h2 id="story-title"></h2>
+    <p id="story-text"></p>
+  </div>
 
   <div id="ui-layer">
     <div id="warning-msg">⚠️ Marcador perdido. Apunta al objeto para continuar.</div>
@@ -261,16 +300,18 @@
       <button onclick="mostrarTexto()">Leer Historia</button>
       <button onclick="reproducirVideo()">Ver Video</button>
       <button onclick="reiniciarExperiencia()" style="background-color: #555;">Reiniciar</button>
-      <br>
-      <button onclick="rotarContenido()" style="background-color: #1e88e5;">⟳ Rotar</button>
-      <button onclick="cambiarEscala(1.25)" style="background-color: #1e88e5;">＋ Grande</button>
-      <button onclick="cambiarEscala(0.8)" style="background-color: #1e88e5;">－ Chico</button>
+      <div id="ajustes">
+        <button onclick="rotarContenido()" style="background-color: #1e88e5;">⟳ Rotar</button>
+        <button onclick="cambiarEscala(1.25)" style="background-color: #1e88e5;">＋ Grande</button>
+        <button onclick="cambiarEscala(0.8)" style="background-color: #1e88e5;">－ Chico</button>
+      </div>
     </div>
   </div>
 
+  <!-- Sin logarithmicDepthBuffer ni antialias: más ligero para el celular -->
   <a-scene
     vr-mode-ui="enabled: false"
-    renderer="logarithmicDepthBuffer: true; alpha: true;"
+    renderer="antialias: false; alpha: true; precision: medium;"
     arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; patternRatio: 0.5; trackingMethod: best;">
 
     <a-assets>
@@ -287,11 +328,6 @@
               smooth="true" smooth-count="8" smooth-tolerance="0.01" smooth-threshold="2">
       <a-video class="ar-content" src="#vid-pan" id="display-pan" width="1.6" height="0.9"
                position="0 0.1 0" rotation="-90 0 0" scale="1.5 1.5 1.5" visible="false"></a-video>
-      <a-entity class="info-text ar-content" id="text-pan" position="0 0.2 0" rotation="-90 0 0" scale="1.5 1.5 1.5" visible="false">
-        <a-plane width="2" height="0.9" color="#000000" opacity="0.7"></a-plane>
-        <a-text value="El pan de muerto\nrepresenta el ciclo\nde la vida y la muerte."
-                align="center" width="1.8" color="#ff8c00" position="0 0 0.01" side="double"></a-text>
-      </a-entity>
     </a-marker>
 
     <!-- Marcador 2: Calaverita -->
@@ -299,16 +335,6 @@
               smooth="true" smooth-count="8" smooth-tolerance="0.01" smooth-threshold="2">
       <a-video class="ar-content" src="#vid-calavera" id="display-calavera" width="1.6" height="0.9"
                position="0 0.1 0" rotation="-90 0 0" scale="1.5 1.5 1.5" visible="false"></a-video>
-      <a-entity class="info-text ar-content" id="text-calavera" position="0 0.2 0" rotation="-90 0 0" scale="1.5 1.5 1.5" visible="false">
-        <a-plane width="2" height="0.9" color="#000000" opacity="0.7"></a-plane>
-        <a-text value="Las calaveritas\nnos recuerdan que la\nmuerte es un destino dulce."
-                align="center" width="1.8" color="#ffffff" position="0 0 0.01" side="double"></a-text>
-      </a-entity>
-    </a-marker>
-
-    <!-- Marcador de PRUEBA (Hiro): borrar cuando todo funcione -->
-    <a-marker preset="hiro" id="marker-hiro" ar-controller>
-      <a-box position="0 0.5 0" scale="0.8 0.8 0.8" color="orange"></a-box>
     </a-marker>
 
     <a-entity camera></a-entity>
