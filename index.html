@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Ofrenda Interactiva - Día de Muertos</title>
+  
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+  <style>
+    body { margin: 0; overflow: hidden; font-family: sans-serif; }
+    
+    #ui-layer {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 100vh;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      z-index: 10;
+    }
+
+    #warning-msg {
+      background-color: rgba(255, 0, 0, 0.8);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: auto;
+      margin-top: 20px;
+      font-weight: bold;
+      display: block;
+    }
+
+    #controls {
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 15px 15px 0 0;
+      width: 100%;
+      box-sizing: border-box;
+      display: none;
+      pointer-events: auto;
+      text-align: center;
+    }
+
+    button {
+      background-color: #ff8c00;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:active { background-color: #cc7000; }
+  </style>
+
+  <script>
+    window.activeMarker = null;
+
+    AFRAME.registerComponent('ar-controller', {
+      init: function () {
+        let marker = this.el;
+        
+        marker.addEventListener('markerFound', function() {
+          document.getElementById('warning-msg').style.display = 'none';
+          document.getElementById('controls').style.display = 'block';
+          window.activeMarker = marker.id;
+        });
+
+        marker.addEventListener('markerLost', function() {
+          document.getElementById('warning-msg').style.display = 'block';
+          document.getElementById('controls').style.display = 'none';
+          window.activeMarker = null;
+          document.querySelectorAll('.info-text').forEach(el => el.setAttribute('visible', 'false'));
+        });
+      }
+    });
+
+    function mostrarTexto() {
+      if (window.activeMarker === 'marker-pan') {
+        document.getElementById('text-pan').setAttribute('visible', 'true');
+      } else if (window.activeMarker === 'marker-calavera') {
+        document.getElementById('text-calavera').setAttribute('visible', 'true');
+      }
+    }
+
+    function reproducirAudio() {
+      if (window.activeMarker === 'marker-pan') {
+        document.getElementById('audio-pan').play();
+      } else if (window.activeMarker === 'marker-calavera') {
+        document.getElementById('audio-calavera').play();
+      }
+    }
+
+    function reiniciarExperiencia() {
+      document.querySelectorAll('audio').forEach(audio => {
+        audio.pause();
+        audio.currentTime = 0;
+      });
+      document.querySelectorAll('.info-text').forEach(el => el.setAttribute('visible', 'false'));
+    }
+  </script>
+</head>
+<body>
+
+  <div id="ui-layer">
+    <div id="warning-msg">⚠️ Marcador perdido. Apunta al objeto para continuar.</div>
+    <div id="controls">
+      <button onclick="mostrarTexto()">Leer Historia</button>
+      <button onclick="reproducirAudio()">Escuchar Relato</button>
+      <button onclick="reiniciarExperiencia()" style="background-color: #555;">Reiniciar</button>
+    </div>
+  </div>
+
+  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
+    
+    <a-assets>
+      <audio id="audio-pan" src="relato_pan.mp3" preload="auto"></audio>
+      <audio id="audio-calavera" src="relato_calavera.mp3" preload="auto"></audio>
+    </a-assets>
+
+    <!-- Marcador 1: Pan de Muerto (Usa tu archivo .patt) -->
+    <a-marker type="pattern" url="pattern-pan.patt" id="marker-pan" ar-controller>
+      <a-text class="info-text" id="text-pan" value="El pan de muerto\nrepresenta el ciclo\nde la vida y la muerte." 
+              position="0 1 0" rotation="-90 0 0" align="center" scale="1 1 1" visible="false" color="#ff8c00">
+      </a-text>
+    </a-marker>
+
+    <!-- Marcador 2: Calaverita (Usa tu archivo .patt) -->
+    <a-marker type="pattern" url="pattern-calavera.patt" id="marker-calavera" ar-controller>
+      <a-text class="info-text" id="text-calavera" value="Las calaveritas\nnos recuerdan que la\nmuerte es un destino dulce." 
+              position="0 1 0" rotation="-90 0 0" align="center" scale="1 1 1" visible="false" color="#ffffff">
+      </a-text>
+    </a-marker>
+
+    <a-entity camera></a-entity>
+  </a-scene>
+
+</body>
+</html>
