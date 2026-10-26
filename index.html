@@ -80,7 +80,6 @@
           
           document.querySelectorAll('.info-text').forEach(el => el.setAttribute('visible', 'false'));
           document.querySelectorAll('a-video').forEach(el => el.setAttribute('visible', 'false'));
-          
           document.querySelectorAll('video').forEach(vid => vid.pause());
         });
       }
@@ -100,15 +99,15 @@
     function reproducirVideo() {
       document.querySelectorAll('.info-text').forEach(el => el.setAttribute('visible', 'false'));
 
-      if (window.activeMarker === 'marker-pan') {
-        let vid = document.getElementById('vid-pan');
-        document.getElementById('display-pan').setAttribute('visible', 'true');
-        vid.play();
-      } else if (window.activeMarker === 'marker-calavera') {
-        let vid = document.getElementById('vid-calavera');
-        document.getElementById('display-calavera').setAttribute('visible', 'true');
-        vid.play();
-      }
+      let vidId = (window.activeMarker === 'marker-pan') ? 'vid-pan' : 'vid-calavera';
+      let dispId = (window.activeMarker === 'marker-pan') ? 'display-pan' : 'display-calavera';
+
+      let vid = document.getElementById(vidId);
+      document.getElementById(dispId).setAttribute('visible', 'true');
+      
+      vid.play().catch(error => {
+        console.log("Error al reproducir video:", error);
+      });
     }
 
     function reiniciarExperiencia() {
@@ -134,18 +133,18 @@
 
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
     
-    <a-assets timeout="1000">
-      <video id="vid-pan" src="video_pan.mp4" preload="none" playsinline webkit-playsinline></video>
-      <video id="vid-calavera" src="video_calavera.mp4" preload="none" playsinline webkit-playsinline></video>
+    <a-assets>
+      <video id="vid-pan" src="video_pan.mp4" crossorigin="anonymous" playsinline webkit-playsinline></video>
+      <video id="vid-calavera" src="video_calavera.mp4" crossorigin="anonymous" playsinline webkit-playsinline></video>
     </a-assets>
 
-    <!-- Marcador 1: Pan de Muerto (Actualizado con tu nuevo archivo patt) -->
+    <!-- Marcador 1: Pan de Muerto -->
     <a-marker type="pattern" url="pattern-PanMuertosIC.patt" id="marker-pan" ar-controller>
       <a-video src="#vid-pan" id="display-pan" width="1.6" height="0.9" position="0 0.5 0" rotation="-90 0 0" visible="false"></a-video>
       <a-text class="info-text" id="text-pan" value="El pan de muerto\nrepresenta el ciclo\nde la vida y la muerte." position="0 1 0" rotation="-90 0 0" align="center" scale="1 1 1" visible="false" color="#ff8c00"></a-text>
     </a-marker>
 
-    <!-- Marcador 2: Calaverita (Actualizado con tu nuevo archivo patt) -->
+    <!-- Marcador 2: Calaverita -->
     <a-marker type="pattern" url="pattern-CalaveralC.patt" id="marker-calavera" ar-controller>
       <a-video src="#vid-calavera" id="display-calavera" width="1.6" height="0.9" position="0 0.5 0" rotation="-90 0 0" visible="false"></a-video>
       <a-text class="info-text" id="text-calavera" value="Las calaveritas\nnos recuerdan que la\nmuerte es un destino dulce." position="0 1 0" rotation="-90 0 0" align="center" scale="1 1 1" visible="false" color="#ffffff"></a-text>
