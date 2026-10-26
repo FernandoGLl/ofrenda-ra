@@ -122,7 +122,6 @@
 
       dbg('Página cargada');
       dbg('AFRAME: ' + (window.AFRAME ? AFRAME.version : 'NO CARGÓ'), window.AFRAME ? '' : 'err');
-      dbg('AR.js (THREEx): ' + (window.THREEx ? 'OK' : 'NO CARGÓ'), window.THREEx ? '' : 'err');
       dbg('HTTPS: ' + (location.protocol === 'https:' ? 'sí' : 'NO (la cámara no funciona sin HTTPS)'),
           location.protocol === 'https:' ? '' : 'err');
 
@@ -242,9 +241,9 @@
   </div>
 
   <a-scene
-  vr-mode-ui="enabled: false"
-  renderer="logarithmicDepthBuffer: true; alpha: true;"
-  arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; patternRatio: 0.68; trackingMethod: best;">
+    vr-mode-ui="enabled: false"
+    renderer="logarithmicDepthBuffer: true; alpha: true;"
+    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; patternRatio: 0.68; trackingMethod: best;">
 
     <a-assets>
       <video id="vid-pan" src="video_pan.mp4" preload="auto" loop crossorigin="anonymous"
