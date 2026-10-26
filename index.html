@@ -77,12 +77,22 @@
           document.getElementById('warning-msg').style.display = 'block';
           document.getElementById('controls').style.display = 'none';
           window.activeMarker = null;
+          
+          // Ocultar elementos al perder el marcador para no dejar videos flotando
           document.querySelectorAll('.info-text').forEach(el => el.setAttribute('visible', 'false'));
+          document.querySelectorAll('a-video').forEach(el => el.setAttribute('visible', 'false'));
+          
+          // Pausar videos si se pierde el marcador
+          document.querySelectorAll('video').forEach(vid => vid.pause());
         });
       }
     });
 
     function mostrarTexto() {
+      // Ocultar videos primero para que no se encimen
+      document.querySelectorAll('a-video').forEach(el => el.setAttribute('visible', 'false'));
+      document.querySelectorAll('video').forEach(vid => vid.pause());
+
       if (window.activeMarker === 'marker-pan') {
         document.getElementById('text-pan').setAttribute('visible', 'true');
       } else if (window.activeMarker === 'marker-calavera') {
@@ -90,19 +100,28 @@
       }
     }
 
-    function reproducirAudio() {
+    function reproducirVideo() {
+      // Ocultar textos primero para que no se encimen
+      document.querySelectorAll('.info-text').forEach(el => el.setAttribute('visible', 'false'));
+
       if (window.activeMarker === 'marker-pan') {
-        document.getElementById('audio-pan').play();
+        let vid = document.getElementById('vid-pan');
+        document.getElementById('display-pan').setAttribute('visible', 'true');
+        vid.play();
       } else if (window.activeMarker === 'marker-calavera') {
-        document.getElementById('audio-calavera').play();
+        let vid = document.getElementById('vid-calavera');
+        document.getElementById('display-calavera').setAttribute('visible', 'true');
+        vid.play();
       }
     }
 
     function reiniciarExperiencia() {
-      document.querySelectorAll('audio').forEach(audio => {
-        audio.pause();
-        audio.currentTime = 0;
+      // Detener videos, regresarlos al inicio y ocultar todo
+      document.querySelectorAll('video').forEach(vid => {
+        vid.pause();
+        vid.currentTime = 0;
       });
+      document.querySelectorAll('a-video').forEach(el => el.setAttribute('visible', 'false'));
       document.querySelectorAll('.info-text').forEach(el => el.setAttribute('visible', 'false'));
     }
   </script>
@@ -113,7 +132,7 @@
     <div id="warning-msg">⚠️ Marcador perdido. Apunta al objeto para continuar.</div>
     <div id="controls">
       <button onclick="mostrarTexto()">Leer Historia</button>
-      <button onclick="reproducirAudio()">Escuchar Relato</button>
+      <button onclick="reproducirVideo()">Ver Video</button>
       <button onclick="reiniciarExperiencia()" style="background-color: #555;">Reiniciar</button>
     </div>
   </div>
@@ -121,19 +140,26 @@
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
     
     <a-assets>
-      <audio id="audio-pan" src="relato_pan.mp3" preload="auto"></audio>
-      <audio id="audio-calavera" src="relato_calavera.mp3" preload="auto"></audio>
+      <!-- IMPORTANTE: playsinline es vital para que funcione en celulares (iOS/Android) sin abrir pantalla completa -->
+      <video id="vid-pan" src="video_pan.mp4" preload="auto" playsinline webkit-playsinline></video>
+      <video id="vid-calavera" src="video_calavera.mp4" preload="auto" playsinline webkit-playsinline></video>
     </a-assets>
 
-    <!-- Marcador 1: Pan de Muerto (Usa tu archivo .patt) -->
+    <!-- Marcador 1: Pan de Muerto -->
     <a-marker type="pattern" url="pattern-pan.patt" id="marker-pan" ar-controller>
+      
+      <a-video src="#vid-pan" id="display-pan" width="1.6" height="0.9" position="0 0.5 0" rotation="-90 0 0" visible="false"></a-video>
+      
       <a-text class="info-text" id="text-pan" value="El pan de muerto\nrepresenta el ciclo\nde la vida y la muerte." 
               position="0 1 0" rotation="-90 0 0" align="center" scale="1 1 1" visible="false" color="#ff8c00">
       </a-text>
     </a-marker>
 
-    <!-- Marcador 2: Calaverita (Usa tu archivo .patt) -->
+    <!-- Marcador 2: Calaverita -->
     <a-marker type="pattern" url="pattern-calaveraIC.patt" id="marker-calavera" ar-controller>
+      
+      <a-video src="#vid-calavera" id="display-calavera" width="1.6" height="0.9" position="0 0.5 0" rotation="-90 0 0" visible="false"></a-video>
+      
       <a-text class="info-text" id="text-calavera" value="Las calaveritas\nnos recuerdan que la\nmuerte es un destino dulce." 
               position="0 1 0" rotation="-90 0 0" align="center" scale="1 1 1" visible="false" color="#ffffff">
       </a-text>
