@@ -362,13 +362,17 @@
       <a-entity class="ar-group" id="group-pan" scale="1.5 1.5 1.5" visible="false">
         <a-entity class="ar-rot" rotation="0 0 0">
 
-          <!-- Altar de dos niveles, en la parte de ABAJO (abajo el más grande, arriba el más chico) -->
-          <a-box width="2.4" height="0.3" depth="1.4" position="0 0.15 0" material="opacity:0.5; color:purple;"></a-box>
-          <a-box width="1.9" height="0.3" depth="0.9" position="0 0.45 0" material="opacity:0.5; color:orange;"></a-box>
+          <!-- CAJA 1 (abajo, la más grande) - sólida -->
+          <a-box width="2.8" height="0.35" depth="1.4" position="0 0.175 0"
+                 material="color: #7b2cbf; roughness: 0.8; metalness: 0"></a-box>
 
-          <!-- Video PARADO, justo encima del altar (base del video a y = 0.6) -->
-          <a-video class="ar-video" src="#vid-pan" width="1.6" height="0.9"
-                   position="0 1.05 0" rotation="0 0 0"></a-video>
+          <!-- CAJA 2 (en medio, más chica) - sólida -->
+          <a-box width="2.0" height="0.35" depth="1.0" position="0 0.525 0"
+                 material="color: #ffb300; roughness: 0.8; metalness: 0"></a-box>
+
+          <!-- VIDEO (arriba, parado sobre la caja 2; su base queda en y = 0.7) -->
+          <a-video class="ar-video" src="#vid-pan" width="1.5" height="0.84"
+                   position="0 1.12 0" rotation="0 0 0"></a-video>
         </a-entity>
       </a-entity>
     </a-marker>
@@ -379,16 +383,24 @@
       <a-entity class="ar-group" id="group-calavera" scale="1.5 1.5 1.5" visible="false">
         <a-entity class="ar-rot" rotation="0 0 0">
 
-          <!-- Altar de dos niveles, en la parte de ABAJO (abajo el más grande, arriba el más chico) -->
-          <a-box width="2.4" height="0.3" depth="1.4" position="0 0.15 0" material="opacity:0.5; color:purple;"></a-box>
-          <a-box width="1.9" height="0.3" depth="0.9" position="0 0.45 0" material="opacity:0.5; color:orange;"></a-box>
+          <!-- CAJA 1 (abajo, la más grande) - sólida -->
+          <a-box width="2.8" height="0.35" depth="1.4" position="0 0.175 0"
+                 material="color: #7b2cbf; roughness: 0.8; metalness: 0"></a-box>
 
-          <!-- Video PARADO, justo encima del altar (base del video a y = 0.6) -->
-          <a-video class="ar-video" src="#vid-calavera" width="1.6" height="0.9"
-                   position="0 1.05 0" rotation="0 0 0"></a-video>
+          <!-- CAJA 2 (en medio, más chica) - sólida -->
+          <a-box width="2.0" height="0.35" depth="1.0" position="0 0.525 0"
+                 material="color: #ffb300; roughness: 0.8; metalness: 0"></a-box>
+
+          <!-- VIDEO (arriba, parado sobre la caja 2; su base queda en y = 0.7) -->
+          <a-video class="ar-video" src="#vid-calavera" width="1.5" height="0.84"
+                   position="0 1.12 0" rotation="0 0 0"></a-video>
         </a-entity>
       </a-entity>
     </a-marker>
+
+    <!-- Luces: dan volumen (caras con distinto brillo) a las cajas -->
+    <a-light type="ambient" color="#ffffff" intensity="0.65"></a-light>
+    <a-light type="directional" color="#ffffff" intensity="0.9" position="1 3 2"></a-light>
 
     <a-entity camera></a-entity>
   </a-scene>
