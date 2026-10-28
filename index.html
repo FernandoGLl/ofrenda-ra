@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Ofrenda Interactiva - Día de Muertos</title>
+  <title>Ofrenda Interactiva AR - Día de Muertos</title>
 
-  <!-- Versiones fijas y estables -->
+  <!-- Versiones fijas y estables (CDN confiable de producción) -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.5/aframe/build/aframe-ar.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
 
   <style>
     html, body {
@@ -68,7 +68,7 @@
     }
     button:active { background-color: #cc7000; }
 
-    /* Recuadro de "Leer Historia" (HTML normal: no usa texto 3D, así no se traba) */
+    /* Recuadro de "Leer Historia" */
     #story-box {
       position: fixed;
       top: 70px;
@@ -76,25 +76,29 @@
       transform: translateX(-50%);
       width: min(92%, 520px);
       box-sizing: border-box;
-      background: rgba(0, 0, 0, 0.82);
+      background: rgba(0, 0, 0, 0.88);
       color: #ffffff;
       border: 2px solid #ff8c00;
       border-radius: 14px;
-      padding: 14px 16px;
+      padding: 16px;
       font-size: 16px;
       line-height: 1.45;
       display: none;
       z-index: 20;
-      pointer-events: none;
+      pointer-events: auto;
     }
     #story-box h2 {
       margin: 0 0 8px 0;
       font-size: 20px;
       color: #ff8c00;
     }
-    #story-box p { margin: 0; }
+    #story-box p { margin: 0 0 12px 0; }
+    #story-box .btn-close {
+      background-color: #444;
+      padding: 6px 14px;
+      font-size: 14px;
+    }
 
-    /* Botones de ajuste (rotar / tamaño) */
     #ajustes { display: block; }
 
     /* Panel de depuración */
@@ -121,9 +125,6 @@
   </style>
 
   <script>
-    // ===== DEPURACIÓN =====
-    // Panel apagado por defecto. Para verlo abre la página con ?debug=1
-    // o cambia false por true aquí.
     const DEBUG = false;
     const MODO_DEBUG = DEBUG || location.search.indexOf('debug=1') !== -1;
 
@@ -149,26 +150,15 @@
     window.addEventListener('DOMContentLoaded', function () {
       if (MODO_DEBUG) {
         document.getElementById('debug-panel').style.display = 'block';
-              }
+      }
 
       dbg('Página cargada');
       dbg('AFRAME: ' + (window.AFRAME ? AFRAME.version : 'NO CARGÓ'), window.AFRAME ? '' : 'err');
 
-      ['video_pan.mp4', 'video_calavera.mp4', 'pattern-PanMuertosIC.patt?v=3', 'pattern-CalaveraIC.patt?v=3']
-        .forEach(function (f) {
-          fetch(f, { method: 'HEAD' })
-            .then(function (r) {
-              const size = r.headers.get('content-length');
-              dbg(f + ' -> HTTP ' + r.status + (size ? ' (' + Math.round(size / 1024) + ' KB)' : ''),
-                  r.ok ? '' : 'err');
-            })
-            .catch(function (err) { dbg(f + ' -> falló: ' + err.message, 'err'); });
-        });
-
       document.querySelectorAll('video').forEach(function (v) {
         v.addEventListener('loadeddata', function () { dbg(v.id + ': cargado OK'); });
         v.addEventListener('error', function () {
-          dbg(v.id + ': ERROR al cargar (código ' + (v.error ? v.error.code : '?') + ')', 'err');
+          dbg(v.id + ': ERROR al cargar video (código ' + (v.error ? v.error.code : '?') + ')', 'err');
         });
       });
 
@@ -179,16 +169,11 @@
       });
     });
 
-    // ===== TEXTOS DE "LEER HISTORIA" =====
-    // Para intercambiar quién va con cada marcador, cambia las claves.
+    // ===== TEXTOS DE HISTORIA =====
     const HISTORIAS = {
-      'marker-pan': {
-        titulo: 'Charles Babbage (1791–1871)',
-        texto: 'Matemático e inventor inglés, considerado el padre de la computación por idear y diseñar la primera máquina analítica, considerada el concepto inicial de un ordenador programable.'
-      },
-      'marker-calavera': {
-        titulo: 'Ada Lovelace (1815–1852)',
-        texto: 'Matemática y escritora inglesa, reconocida como la primera programadora de la historia por escribir un algoritmo destinado a la máquina analítica de Babbage.'
+      'marker-hiro': {
+        titulo: 'Altar de Día de Muertos',
+        texto: 'En la tradición mexicana, las ofrendas representan el camino y homenaje a nuestros seres queridos. El escalón inferior simboliza la tierra, mientras que el nivel superior alberga la memoria y retrato del homenajeado.'
       }
     };
 
@@ -204,8 +189,8 @@
       document.querySelectorAll('video').forEach(function (vid) { vid.pause(); });
     }
 
-    const NOMBRES = { 'marker-pan': 'Pan de muerto', 'marker-calavera': 'Calavera' };
-    const visibles = new Set();   // marcadores que se están viendo ahora mismo
+    const NOMBRES = { 'marker-hiro': 'Marcador Hiro' };
+    const visibles = new Set();
 
     function actualizarEtiqueta() {
       const el = document.getElementById('marker-name');
@@ -226,7 +211,6 @@
           if (lostTimer) { clearTimeout(lostTimer); lostTimer = null; }
           visibles.add(marker.id);
 
-          // Si cambió de marcador, se limpia lo que estaba en pantalla del anterior
           if (window.activeMarker && window.activeMarker !== marker.id) {
             ocultarHistoria();
             ocultarVideos();
@@ -240,19 +224,16 @@
         marker.addEventListener('markerLost', function () {
           dbg('Marcador perdido: ' + marker.id);
           if (lostTimer) clearTimeout(lostTimer);
-          // Espera 1.5 s por si solo fue un parpadeo
           lostTimer = setTimeout(function () {
             lostTimer = null;
             visibles.delete(marker.id);
 
             if (visibles.size === 0) {
-              // No se ve ningún marcador: se oculta todo
               window.activeMarker = null;
               mostrarInterfaz(false);
               ocultarHistoria();
               ocultarVideos();
             } else if (window.activeMarker === marker.id) {
-              // Se perdió este, pero otro sigue visible: se pasa a ese
               window.activeMarker = Array.from(visibles).pop();
               ocultarHistoria();
               ocultarVideos();
@@ -274,16 +255,14 @@
 
     function reproducirVideo() {
       ocultarHistoria();
-      ocultarVideos();   // detiene el otro video si estaba corriendo
+      ocultarVideos();
 
-      const esPan = (window.activeMarker === 'marker-pan');
-      const esCal = (window.activeMarker === 'marker-calavera');
-      if (!esPan && !esCal) return;
+      if (window.activeMarker !== 'marker-hiro') return;
 
-      const vid = document.getElementById(esPan ? 'vid-pan' : 'vid-calavera');
-      document.getElementById(esPan ? 'group-pan' : 'group-calavera').setAttribute('visible', 'true');
+      const vid = document.getElementById('vid-hiro');
+      document.getElementById('group-hiro').setAttribute('visible', 'true');
 
-      dbg('Reproduciendo ' + vid.id + ' (readyState=' + vid.readyState + ')');
+      dbg('Reproduciendo ' + vid.id);
       vid.play().then(function () {
         dbg('Video en reproducción');
       }).catch(function (error) {
@@ -300,18 +279,21 @@
       ocultarHistoria();
     }
 
-    // ===== AJUSTE DE ORIENTACIÓN Y TAMAÑO DEL VIDEO =====
+    // ===== AJUSTE DE ORIENTACIÓN Y TAMAÑO =====
     let contentRot = 0;
-    let contentScale = 1.5;
+    let contentScale = 1.0;
 
     function aplicarAjuste() {
-      document.querySelectorAll('.ar-rot').forEach(function (el) {
+      document.querySelectorAll('.ar-video').forEach(function (el) {
+        el.setAttribute('rotation', '0 ' + contentRot + ' 0');
+      });
+      document.querySelectorAll('.altar').forEach(function (el) {
         el.setAttribute('rotation', '0 ' + contentRot + ' 0');
       });
       document.querySelectorAll('.ar-group').forEach(function (el) {
         el.setAttribute('scale', contentScale + ' ' + contentScale + ' ' + contentScale);
       });
-      dbg('Ajuste -> rotación=' + contentRot + '  escala=' + contentScale.toFixed(2), 'warn');
+      dbg('Ajuste -> rotación=' + contentRot + ' escala=' + contentScale.toFixed(2), 'warn');
     }
     function rotarContenido() { contentRot = (contentRot + 90) % 360; aplicarAjuste(); }
     function cambiarEscala(f) { contentScale = Math.max(0.3, Math.min(6, contentScale * f)); aplicarAjuste(); }
@@ -324,10 +306,11 @@
   <div id="story-box">
     <h2 id="story-title"></h2>
     <p id="story-text"></p>
+    <button class="btn-close" onclick="ocultarHistoria()">Cerrar</button>
   </div>
 
   <div id="ui-layer">
-    <div id="warning-msg">⚠️ Marcador perdido. Apunta al objeto para continuar.</div>
+    <div id="warning-msg">⚠️ Apunta la cámara al marcador Hiro para ver el altar.</div>
     <div id="controls">
       <div id="marker-name" style="color:#ffd740; font-size:14px; margin-bottom:4px;"></div>
       <button onclick="mostrarTexto()">Leer Historia</button>
@@ -341,66 +324,38 @@
     </div>
   </div>
 
-  <!-- Sin logarithmicDepthBuffer ni antialias: más ligero para el celular -->
   <a-scene
     vr-mode-ui="enabled: false"
     renderer="antialias: false; alpha: true; precision: medium;"
-    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; patternRatio: 0.5; trackingMethod: best;">
+    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; trackingMethod: best;">
 
     <a-assets>
-      <video id="vid-pan" src="video_pan.mp4" preload="auto" loop crossorigin="anonymous"
+      <!-- Cambia 'video_pan.mp4' por la ruta de tu video principal -->
+      <video id="vid-hiro" src="video_pan.mp4" preload="auto" loop crossorigin="anonymous"
              playsinline webkit-playsinline
-             onerror="dbg('No carga video_pan.mp4', 'err')"></video>
-      <video id="vid-calavera" src="video_calavera.mp4" preload="auto" loop crossorigin="anonymous"
-             playsinline webkit-playsinline
-             onerror="dbg('No carga video_calavera.mp4', 'err')"></video>
+             onerror="dbg('No carga el video', 'err')"></video>
     </a-assets>
 
-    <!-- Marcador 1: Pan de Muerto -->
-    <a-marker type="pattern" url="pattern-PanMuertosIC.patt?v=3" id="marker-pan" ar-controller
+    <!-- Marcador estándar Hiro -->
+    <a-marker preset="hiro" id="marker-hiro" ar-controller
               smooth="true" smooth-count="8" smooth-tolerance="0.01" smooth-threshold="2">
-      <a-entity class="ar-group" id="group-pan" scale="1.5 1.5 1.5" visible="false">
-        <a-entity class="ar-rot" rotation="0 0 0">
+      <a-entity class="ar-group" id="group-hiro" scale="1 1 1" visible="false">
 
-          <!-- CAJA 1 (abajo, la más grande) - sólida -->
-          <a-box width="2.8" height="0.35" depth="1.4" position="0 0.175 0"
-                 material="color: #7b2cbf; roughness: 0.8; metalness: 0"></a-box>
-
-          <!-- CAJA 2 (en medio, más chica) - sólida -->
-          <a-box width="2.0" height="0.35" depth="1.0" position="0 0.525 0"
-                 material="color: #ffb300; roughness: 0.8; metalness: 0"></a-box>
-
-          <!-- VIDEO (arriba, parado sobre la caja 2; su base queda en y = 0.7) -->
-          <a-video class="ar-video" src="#vid-pan" width="1.5" height="0.84"
-                   position="0 1.12 0" rotation="0 0 0"></a-video>
+        <!-- Altar de 2 niveles (Cajas rectangulares sólidas oscuras) -->
+        <a-entity class="altar" position="0 0 0">
+          <!-- Escalón 1 (Base): Rectángulo amplio negro azabache / grafito -->
+          <a-box width="2.4" height="0.3" depth="1.6" position="0 0.15 0" color="#16161a"></a-box>
+          
+          <!-- Escalón 2 (Nivel superior): Rectángulo ligeramente más pequeño morado noche -->
+          <a-box width="1.8" height="0.3" depth="1.0" position="0 0.45 -0.2" color="#2b142c"></a-box>
         </a-entity>
+
+        <!-- Video vertical situado justo en el nivel superior tipo retrato -->
+        <a-video class="ar-video" src="#vid-hiro" width="1.4" height="0.9"
+                 position="0 1.05 -0.2" rotation="0 0 0"></a-video>
+
       </a-entity>
     </a-marker>
-
-    <!-- Marcador 2: Calaverita -->
-    <a-marker type="pattern" url="pattern-CalaveraIC.patt?v=3" id="marker-calavera" ar-controller
-              smooth="true" smooth-count="8" smooth-tolerance="0.01" smooth-threshold="2">
-      <a-entity class="ar-group" id="group-calavera" scale="1.5 1.5 1.5" visible="false">
-        <a-entity class="ar-rot" rotation="0 0 0">
-
-          <!-- CAJA 1 (abajo, la más grande) - sólida -->
-          <a-box width="2.8" height="0.35" depth="1.4" position="0 0.175 0"
-                 material="color: #7b2cbf; roughness: 0.8; metalness: 0"></a-box>
-
-          <!-- CAJA 2 (en medio, más chica) - sólida -->
-          <a-box width="2.0" height="0.35" depth="1.0" position="0 0.525 0"
-                 material="color: #ffb300; roughness: 0.8; metalness: 0"></a-box>
-
-          <!-- VIDEO (arriba, parado sobre la caja 2; su base queda en y = 0.7) -->
-          <a-video class="ar-video" src="#vid-calavera" width="1.5" height="0.84"
-                   position="0 1.12 0" rotation="0 0 0"></a-video>
-        </a-entity>
-      </a-entity>
-    </a-marker>
-
-    <!-- Luces: dan volumen (caras con distinto brillo) a las cajas -->
-    <a-light type="ambient" color="#ffffff" intensity="0.65"></a-light>
-    <a-light type="directional" color="#ffffff" intensity="0.9" position="1 3 2"></a-light>
 
     <a-entity camera></a-entity>
   </a-scene>
