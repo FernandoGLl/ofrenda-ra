@@ -303,6 +303,122 @@
       ocultarHistoria();
     }
 
+    // ===== TEXTURAS (dibujadas por código, no necesitan archivos de imagen) =====
+    const TEXTURAS_CACHE = {};
+
+    function rombo(g, cx, cy, r, color) {
+      g.fillStyle = color;
+      g.beginPath();
+      g.moveTo(cx, cy - r); g.lineTo(cx + r, cy); g.lineTo(cx, cy + r); g.lineTo(cx - r, cy);
+      g.closePath(); g.fill();
+    }
+
+    // Cada textura es un "mosaico" de 512x128 que se repite en la caja
+    function crearTextura(tipo) {
+      if (TEXTURAS_CACHE[tipo]) return TEXTURAS_CACHE[tipo];
+      const W = 512, H = 128;
+      const c = document.createElement('canvas');
+      c.width = W; c.height = H;
+      const g = c.getContext('2d');
+
+      if (tipo === 'mantel') {
+        // Mantel bordado: tela morada con franjas y rombos de colores
+        g.fillStyle = '#6a1b9a';
+        g.fillRect(0, 0, W, H);
+        g.lineWidth = 1;
+        g.strokeStyle = 'rgba(255,255,255,0.06)';          // hilos verticales
+        for (let x = 0; x < W; x += 4) { g.beginPath(); g.moveTo(x + 0.5, 0); g.lineTo(x + 0.5, H); g.stroke(); }
+        g.strokeStyle = 'rgba(0,0,0,0.10)';                // hilos horizontales
+        for (let y = 0; y < H; y += 4) { g.beginPath(); g.moveTo(0, y + 0.5); g.lineTo(W, y + 0.5); g.stroke(); }
+
+        const franja = function (y, h, col) { g.fillStyle = col; g.fillRect(0, y, W, h); };
+        franja(8, 6, '#ffb300');  franja(18, 3, '#ff4fa3');
+        franja(H - 14, 6, '#ffb300');  franja(H - 21, 3, '#ff4fa3');
+
+        for (let x = 32; x < W; x += 64) {
+          rombo(g, x, H / 2, 26, '#ffb300');
+          rombo(g, x, H / 2, 17, '#ff4fa3');
+          rombo(g, x, H / 2, 8, '#ffffff');
+          g.fillStyle = '#ffd54f';                         // puntitos entre rombos
+          g.beginPath(); g.arc(x + 32, H / 2, 5, 0, Math.PI * 2); g.fill();
+        }
+      } else {
+        // Papel picado: banderitas de colores con figuras recortadas
+        const OSCURO = '#1c0f1e';
+        const colores = ['#ff4fa3', '#ff8c00', '#ffd54f', '#26c6da'];
+        g.fillStyle = OSCURO;
+        g.fillRect(0, 0, W, H);
+        for (let i = 0; i < 4; i++) {
+          const x0 = i * 128, cx = x0 + 64;
+          g.fillStyle = colores[i];
+          g.fillRect(x0 + 4, 6, 120, 110);                 // la banderita
+
+          g.fillStyle = OSCURO;                            // recortes
+          for (let k = 0; k < 8; k++) {                    // fila de circulitos arriba
+            g.beginPath(); g.arc(x0 + 12 + k * 15, 17, 3.2, 0, Math.PI * 2); g.fill();
+          }
+          g.strokeStyle = OSCURO; g.lineWidth = 5;         // rombo calado
+          g.beginPath();
+          g.moveTo(cx, 32); g.lineTo(cx + 32, 62); g.lineTo(cx, 92); g.lineTo(cx - 32, 62);
+          g.closePath(); g.stroke();
+          rombo(g, cx, 62, 11, OSCURO);                    // rombo central
+          g.fillStyle = colores[i];
+          g.beginPath(); g.arc(cx, 62, 4, 0, Math.PI * 2); g.fill();
+          g.fillStyle = OSCURO;
+          for (let k = 0; k < 8; k++) {                    // flequillo ondulado abajo
+            g.beginPath(); g.arc(x0 + 12 + k * 15, 116, 7.5, Math.PI, 0); g.fill();
+          }
+        }
+      }
+      TEXTURAS_CACHE[tipo] = c.toDataURL('image/png');
+      return TEXTURAS_CACHE[tipo];
+    }
+
+    // Uso: <a-box textura="tipo: mantel; repeticiones: 2">
+    AFRAME.registerComponent('textura', {
+      schema: { tipo: { default: 'mantel' }, repeticiones: { default: 2 } },
+      init: function () {
+        this.el.setAttribute('material', {
+          src: crearTextura(this.data.tipo),
+          repeat: this.data.repeticiones + ' 1',
+          color: '#ffffff',
+          roughness: 0.9,
+          metalness: 0
+        });
+      }
+    });
+
+    // Uso: <a-entity velas="cantidad: 5; ancho: 2.0"> (se colocan sobre la caja 1, al frente)
+    AFRAME.registerComponent('velas', {
+      schema: { cantidad: { default: 5 }, ancho: { default: 2.0 } },
+      init: function () {
+        const n = this.data.cantidad;
+        for (let i = 0; i < n; i++) {
+          const x = n === 1 ? 0 : (i - (n - 1) / 2) * (this.data.ancho / (n - 1));
+          const h = 0.16 + (i % 2) * 0.05;                 // alturas distintas
+
+          const vela = document.createElement('a-cylinder');
+          vela.setAttribute('radius', '0.045');
+          vela.setAttribute('height', h);
+          vela.setAttribute('segments-radial', '12');
+          vela.setAttribute('position', x + ' ' + (h / 2) + ' 0');
+          vela.setAttribute('material', 'color: #fff3d6; roughness: 0.9; metalness: 0');
+          this.el.appendChild(vela);
+
+          const llama = document.createElement('a-sphere');
+          llama.setAttribute('radius', '0.035');
+          llama.setAttribute('segments-width', '8');
+          llama.setAttribute('segments-height', '6');
+          llama.setAttribute('position', x + ' ' + (h + 0.05) + ' 0');
+          llama.setAttribute('scale', '1 1.5 1');
+          llama.setAttribute('material', 'shader: flat; color: #ffcc33');
+          llama.setAttribute('animation',
+            'property: scale; from: 1 1.4 1; to: 1.2 1.9 1.2; dir: alternate; loop: true; easing: easeInOutSine; dur: ' + (240 + i * 70));
+          this.el.appendChild(llama);
+        }
+      }
+    });
+
     // ===== AJUSTE DE ORIENTACIÓN, INCLINACIÓN Y TAMAÑO =====
     // Rotar:    gira el conjunto sobre el marcador (de 90 en 90).
     // Inclinar: 90 = el altar se ve totalmente de frente desde arriba;
@@ -380,13 +496,16 @@
           <!-- ar-tilt: inclina el altar hacia ti para verlo de FRENTE aunque mires desde arriba (botón Inclinar) -->
           <a-entity class="ar-tilt" rotation="-75 0 0">
 
-            <!-- Caja 1 (base, la más grande) -->
+            <!-- Caja 1 (base, la más grande): mantel bordado -->
             <a-box width="2.4" height="0.3" depth="1.0" position="0 0.15 0.5"
-                   material="color: #7b2cbf; roughness: 0.8; metalness: 0"></a-box>
+                   textura="tipo: mantel; repeticiones: 2"></a-box>
 
-            <!-- Caja 2 (nivel superior, más chica) -->
+            <!-- Caja 2 (nivel superior, más chica): papel picado -->
             <a-box width="1.8" height="0.3" depth="0.7" position="0 0.45 0.35"
-                   material="color: #ffb300; roughness: 0.8; metalness: 0"></a-box>
+                   textura="tipo: papel; repeticiones: 1.5"></a-box>
+
+            <!-- Velas al frente, sobre la caja 1 -->
+            <a-entity velas="cantidad: 5; ancho: 2.0" position="0 0.3 0.85"></a-entity>
 
             <!-- Video parado sobre la caja 2 -->
             <a-video class="ar-video" src="#vid-pan" width="1.4" height="0.9"
@@ -405,13 +524,16 @@
           <!-- ar-tilt: inclina el altar hacia ti para verlo de FRENTE aunque mires desde arriba (botón Inclinar) -->
           <a-entity class="ar-tilt" rotation="-75 0 0">
 
-            <!-- Caja 1 (base, la más grande) -->
+            <!-- Caja 1 (base, la más grande): mantel bordado -->
             <a-box width="2.4" height="0.3" depth="1.0" position="0 0.15 0.5"
-                   material="color: #7b2cbf; roughness: 0.8; metalness: 0"></a-box>
+                   textura="tipo: mantel; repeticiones: 2"></a-box>
 
-            <!-- Caja 2 (nivel superior, más chica) -->
+            <!-- Caja 2 (nivel superior, más chica): papel picado -->
             <a-box width="1.8" height="0.3" depth="0.7" position="0 0.45 0.35"
-                   material="color: #ffb300; roughness: 0.8; metalness: 0"></a-box>
+                   textura="tipo: papel; repeticiones: 1.5"></a-box>
+
+            <!-- Velas al frente, sobre la caja 1 -->
+            <a-entity velas="cantidad: 5; ancho: 2.0" position="0 0.3 0.85"></a-entity>
 
             <!-- Video parado sobre la caja 2 -->
             <a-video class="ar-video" src="#vid-calavera" width="1.4" height="0.9"
