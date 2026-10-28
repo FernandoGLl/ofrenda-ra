@@ -97,6 +97,7 @@
       background-color: #444;
       padding: 6px 14px;
       font-size: 14px;
+      margin: 0;
     }
 
     #ajustes { display: block; }
@@ -125,6 +126,7 @@
   </style>
 
   <script>
+    // Panel de depuración: apagado por defecto. Actívalo abriendo la página con ?debug=1
     const DEBUG = false;
     const MODO_DEBUG = DEBUG || location.search.indexOf('debug=1') !== -1;
 
@@ -155,6 +157,18 @@
       dbg('Página cargada');
       dbg('AFRAME: ' + (window.AFRAME ? AFRAME.version : 'NO CARGÓ'), window.AFRAME ? '' : 'err');
 
+      // Verifica que existan los archivos (solo se nota en modo debug)
+      ['video_pan.mp4', 'video_calavera.mp4', 'pattern-PanMuertosIC.patt?v=3', 'pattern-CalaveraIC.patt?v=3']
+        .forEach(function (f) {
+          fetch(f, { method: 'HEAD' })
+            .then(function (r) {
+              const size = r.headers.get('content-length');
+              dbg(f + ' -> HTTP ' + r.status + (size ? ' (' + Math.round(size / 1024) + ' KB)' : ''),
+                  r.ok ? '' : 'err');
+            })
+            .catch(function (err) { dbg(f + ' -> falló: ' + err.message, 'err'); });
+        });
+
       document.querySelectorAll('video').forEach(function (v) {
         v.addEventListener('loadeddata', function () { dbg(v.id + ': cargado OK'); });
         v.addEventListener('error', function () {
@@ -169,11 +183,16 @@
       });
     });
 
-    // ===== TEXTOS DE HISTORIA =====
+    // ===== TEXTOS DE "LEER HISTORIA" =====
+    // Para intercambiar quién va con cada marcador, cambia las claves.
     const HISTORIAS = {
-      'marker-hiro': {
-        titulo: 'Altar de Día de Muertos',
-        texto: 'En la tradición mexicana, las ofrendas representan el camino y homenaje a nuestros seres queridos. El escalón inferior simboliza la tierra, mientras que el nivel superior alberga la memoria y retrato del homenajeado.'
+      'marker-pan': {
+        titulo: 'Charles Babbage (1791–1871)',
+        texto: 'Matemático e inventor inglés, considerado el padre de la computación por idear y diseñar la primera máquina analítica, considerada el concepto inicial de un ordenador programable.'
+      },
+      'marker-calavera': {
+        titulo: 'Ada Lovelace (1815–1852)',
+        texto: 'Matemática y escritora inglesa, reconocida como la primera programadora de la historia por escribir un algoritmo destinado a la máquina analítica de Babbage.'
       }
     };
 
@@ -184,13 +203,14 @@
       document.getElementById('story-box').style.display = 'none';
     }
 
+    // Oculta el altar con el video y pausa todos los videos
     function ocultarVideos() {
       document.querySelectorAll('.ar-group').forEach(function (el) { el.setAttribute('visible', 'false'); });
       document.querySelectorAll('video').forEach(function (vid) { vid.pause(); });
     }
 
-    const NOMBRES = { 'marker-hiro': 'Marcador Hiro' };
-    const visibles = new Set();
+    const NOMBRES = { 'marker-pan': 'Pan de muerto', 'marker-calavera': 'Calavera' };
+    const visibles = new Set();   // marcadores que se están viendo ahora mismo
 
     function actualizarEtiqueta() {
       const el = document.getElementById('marker-name');
@@ -211,6 +231,7 @@
           if (lostTimer) { clearTimeout(lostTimer); lostTimer = null; }
           visibles.add(marker.id);
 
+          // Si cambió de marcador, se limpia lo que estaba en pantalla del anterior
           if (window.activeMarker && window.activeMarker !== marker.id) {
             ocultarHistoria();
             ocultarVideos();
@@ -224,6 +245,7 @@
         marker.addEventListener('markerLost', function () {
           dbg('Marcador perdido: ' + marker.id);
           if (lostTimer) clearTimeout(lostTimer);
+          // Espera 1.5 s por si solo fue un parpadeo
           lostTimer = setTimeout(function () {
             lostTimer = null;
             visibles.delete(marker.id);
@@ -255,14 +277,16 @@
 
     function reproducirVideo() {
       ocultarHistoria();
-      ocultarVideos();
+      ocultarVideos();   // detiene el otro video si estaba corriendo
 
-      if (window.activeMarker !== 'marker-hiro') return;
+      const esPan = (window.activeMarker === 'marker-pan');
+      const esCal = (window.activeMarker === 'marker-calavera');
+      if (!esPan && !esCal) return;
 
-      const vid = document.getElementById('vid-hiro');
-      document.getElementById('group-hiro').setAttribute('visible', 'true');
+      const vid = document.getElementById(esPan ? 'vid-pan' : 'vid-calavera');
+      document.getElementById(esPan ? 'group-pan' : 'group-calavera').setAttribute('visible', 'true');
 
-      dbg('Reproduciendo ' + vid.id);
+      dbg('Reproduciendo ' + vid.id + ' (readyState=' + vid.readyState + ')');
       vid.play().then(function () {
         dbg('Video en reproducción');
       }).catch(function (error) {
@@ -280,14 +304,13 @@
     }
 
     // ===== AJUSTE DE ORIENTACIÓN Y TAMAÑO =====
+    // Rotar gira TODO el conjunto (cajas + video) alrededor del centro del marcador,
+    // así el video nunca se separa del altar.
     let contentRot = 0;
     let contentScale = 1.0;
 
     function aplicarAjuste() {
-      document.querySelectorAll('.ar-video').forEach(function (el) {
-        el.setAttribute('rotation', '0 ' + contentRot + ' 0');
-      });
-      document.querySelectorAll('.altar').forEach(function (el) {
+      document.querySelectorAll('.ar-rot').forEach(function (el) {
         el.setAttribute('rotation', '0 ' + contentRot + ' 0');
       });
       document.querySelectorAll('.ar-group').forEach(function (el) {
@@ -310,7 +333,7 @@
   </div>
 
   <div id="ui-layer">
-    <div id="warning-msg">⚠️ Apunta la cámara al marcador Hiro para ver el altar.</div>
+    <div id="warning-msg">⚠️ Marcador perdido. Apunta al objeto para continuar.</div>
     <div id="controls">
       <div id="marker-name" style="color:#ffd740; font-size:14px; margin-bottom:4px;"></div>
       <button onclick="mostrarTexto()">Leer Historia</button>
@@ -327,33 +350,50 @@
   <a-scene
     vr-mode-ui="enabled: false"
     renderer="antialias: false; alpha: true; precision: medium;"
-    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; trackingMethod: best;">
+    arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; patternRatio: 0.5; trackingMethod: best;">
 
     <a-assets>
-      <!-- Cambia 'video_pan.mp4' por la ruta de tu video principal -->
-      <video id="vid-hiro" src="video_pan.mp4" preload="auto" loop crossorigin="anonymous"
+      <video id="vid-pan" src="video_pan.mp4" preload="auto" loop crossorigin="anonymous"
              playsinline webkit-playsinline
-             onerror="dbg('No carga el video', 'err')"></video>
+             onerror="dbg('No carga video_pan.mp4', 'err')"></video>
+      <video id="vid-calavera" src="video_calavera.mp4" preload="auto" loop crossorigin="anonymous"
+             playsinline webkit-playsinline
+             onerror="dbg('No carga video_calavera.mp4', 'err')"></video>
     </a-assets>
 
-    <!-- Marcador estándar Hiro -->
-    <a-marker preset="hiro" id="marker-hiro" ar-controller
+    <!-- Marcador 1: Pan de Muerto -->
+    <a-marker type="pattern" url="pattern-PanMuertosIC.patt?v=3" id="marker-pan" ar-controller
               smooth="true" smooth-count="8" smooth-tolerance="0.01" smooth-threshold="2">
-      <a-entity class="ar-group" id="group-hiro" scale="1 1 1" visible="false">
+      <a-entity class="ar-group" id="group-pan" scale="1 1 1" visible="false">
+        <a-entity class="ar-rot" rotation="0 0 0">
 
-        <!-- Altar de 2 niveles (Cajas rectangulares sólidas oscuras) -->
-        <a-entity class="altar" position="0 0 0">
-          <!-- Escalón 1 (Base): Rectángulo amplio negro azabache / grafito -->
+          <!-- Altar de 2 niveles (cajas rectangulares sólidas) -->
+          <!-- Escalón 1 (base): el más grande -->
           <a-box width="2.4" height="0.3" depth="1.6" position="0 0.15 0" color="#16161a"></a-box>
-          
-          <!-- Escalón 2 (Nivel superior): Rectángulo ligeramente más pequeño morado noche -->
+          <!-- Escalón 2 (nivel superior): más pequeño -->
           <a-box width="1.8" height="0.3" depth="1.0" position="0 0.45 -0.2" color="#2b142c"></a-box>
+
+          <!-- Video vertical sobre el nivel superior -->
+          <a-video class="ar-video" src="#vid-pan" width="1.4" height="0.9"
+                   position="0 1.05 -0.2" rotation="0 0 0"></a-video>
         </a-entity>
+      </a-entity>
+    </a-marker>
 
-        <!-- Video vertical situado justo en el nivel superior tipo retrato -->
-        <a-video class="ar-video" src="#vid-hiro" width="1.4" height="0.9"
-                 position="0 1.05 -0.2" rotation="0 0 0"></a-video>
+    <!-- Marcador 2: Calaverita -->
+    <a-marker type="pattern" url="pattern-CalaveraIC.patt?v=3" id="marker-calavera" ar-controller
+              smooth="true" smooth-count="8" smooth-tolerance="0.01" smooth-threshold="2">
+      <a-entity class="ar-group" id="group-calavera" scale="1 1 1" visible="false">
+        <a-entity class="ar-rot" rotation="0 0 0">
 
+          <!-- Altar de 2 niveles (cajas rectangulares sólidas) -->
+          <a-box width="2.4" height="0.3" depth="1.6" position="0 0.15 0" color="#16161a"></a-box>
+          <a-box width="1.8" height="0.3" depth="1.0" position="0 0.45 -0.2" color="#2b142c"></a-box>
+
+          <!-- Video vertical sobre el nivel superior -->
+          <a-video class="ar-video" src="#vid-calavera" width="1.4" height="0.9"
+                   position="0 1.05 -0.2" rotation="0 0 0"></a-video>
+        </a-entity>
       </a-entity>
     </a-marker>
 
