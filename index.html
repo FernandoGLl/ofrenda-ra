@@ -303,22 +303,31 @@
       ocultarHistoria();
     }
 
-    // ===== AJUSTE DE ORIENTACIÓN Y TAMAÑO =====
-    // Rotar gira TODO el conjunto (cajas + video) alrededor del centro del marcador,
-    // así el video nunca se separa del altar.
+    // ===== AJUSTE DE ORIENTACIÓN, INCLINACIÓN Y TAMAÑO =====
+    // Rotar:    gira el conjunto sobre el marcador (de 90 en 90).
+    // Inclinar: 90 = el altar se ve totalmente de frente desde arriba;
+    //           valores menores dejan ver también la parte de arriba de las cajas (más 3D).
+    // Tamaño:   escala todo el conjunto.
+    const INCLINACIONES = [75, 60, 45, 90];
+    let idxIncl = 0;
     let contentRot = 0;
     let contentScale = 1.0;
 
     function aplicarAjuste() {
+      const incl = INCLINACIONES[idxIncl];
       document.querySelectorAll('.ar-rot').forEach(function (el) {
         el.setAttribute('rotation', '0 ' + contentRot + ' 0');
+      });
+      document.querySelectorAll('.ar-tilt').forEach(function (el) {
+        el.setAttribute('rotation', '-' + incl + ' 0 0');
       });
       document.querySelectorAll('.ar-group').forEach(function (el) {
         el.setAttribute('scale', contentScale + ' ' + contentScale + ' ' + contentScale);
       });
-      dbg('Ajuste -> rotación=' + contentRot + ' escala=' + contentScale.toFixed(2), 'warn');
+      dbg('Ajuste -> rotación=' + contentRot + ' inclinación=' + incl + ' escala=' + contentScale.toFixed(2), 'warn');
     }
     function rotarContenido() { contentRot = (contentRot + 90) % 360; aplicarAjuste(); }
+    function inclinarContenido() { idxIncl = (idxIncl + 1) % INCLINACIONES.length; aplicarAjuste(); }
     function cambiarEscala(f) { contentScale = Math.max(0.3, Math.min(6, contentScale * f)); aplicarAjuste(); }
   </script>
 </head>
@@ -341,6 +350,7 @@
       <button onclick="reiniciarExperiencia()" style="background-color: #555;">Reiniciar</button>
       <div id="ajustes">
         <button onclick="rotarContenido()" style="background-color: #1e88e5;">⟳ Rotar</button>
+        <button onclick="inclinarContenido()" style="background-color: #1e88e5;">⤴ Inclinar</button>
         <button onclick="cambiarEscala(1.25)" style="background-color: #1e88e5;">＋ Grande</button>
         <button onclick="cambiarEscala(0.8)" style="background-color: #1e88e5;">－ Chico</button>
       </div>
@@ -365,17 +375,23 @@
     <a-marker type="pattern" url="pattern-PanMuertosIC.patt?v=3" id="marker-pan" ar-controller
               smooth="true" smooth-count="8" smooth-tolerance="0.01" smooth-threshold="2">
       <a-entity class="ar-group" id="group-pan" scale="1 1 1" visible="false">
+        <!-- ar-rot: gira el conjunto sobre el marcador (botón Rotar) -->
         <a-entity class="ar-rot" rotation="0 0 0">
+          <!-- ar-tilt: inclina el altar hacia ti para verlo de FRENTE aunque mires desde arriba (botón Inclinar) -->
+          <a-entity class="ar-tilt" rotation="-75 0 0">
 
-          <!-- Altar de 2 niveles (cajas rectangulares sólidas) -->
-          <!-- Escalón 1 (base): el más grande -->
-          <a-box width="2.4" height="0.3" depth="1.6" position="0 0.15 0" color="#16161a"></a-box>
-          <!-- Escalón 2 (nivel superior): más pequeño -->
-          <a-box width="1.8" height="0.3" depth="1.0" position="0 0.45 -0.2" color="#2b142c"></a-box>
+            <!-- Caja 1 (base, la más grande) -->
+            <a-box width="2.4" height="0.3" depth="1.0" position="0 0.15 0.5"
+                   material="color: #7b2cbf; roughness: 0.8; metalness: 0"></a-box>
 
-          <!-- Video vertical sobre el nivel superior -->
-          <a-video class="ar-video" src="#vid-pan" width="1.4" height="0.9"
-                   position="0 1.05 -0.2" rotation="0 0 0"></a-video>
+            <!-- Caja 2 (nivel superior, más chica) -->
+            <a-box width="1.8" height="0.3" depth="0.7" position="0 0.45 0.35"
+                   material="color: #ffb300; roughness: 0.8; metalness: 0"></a-box>
+
+            <!-- Video parado sobre la caja 2 -->
+            <a-video class="ar-video" src="#vid-pan" width="1.4" height="0.9"
+                     position="0 1.05 0.35"></a-video>
+          </a-entity>
         </a-entity>
       </a-entity>
     </a-marker>
@@ -384,18 +400,30 @@
     <a-marker type="pattern" url="pattern-CalaveraIC.patt?v=3" id="marker-calavera" ar-controller
               smooth="true" smooth-count="8" smooth-tolerance="0.01" smooth-threshold="2">
       <a-entity class="ar-group" id="group-calavera" scale="1 1 1" visible="false">
+        <!-- ar-rot: gira el conjunto sobre el marcador (botón Rotar) -->
         <a-entity class="ar-rot" rotation="0 0 0">
+          <!-- ar-tilt: inclina el altar hacia ti para verlo de FRENTE aunque mires desde arriba (botón Inclinar) -->
+          <a-entity class="ar-tilt" rotation="-75 0 0">
 
-          <!-- Altar de 2 niveles (cajas rectangulares sólidas) -->
-          <a-box width="2.4" height="0.3" depth="1.6" position="0 0.15 0" color="#16161a"></a-box>
-          <a-box width="1.8" height="0.3" depth="1.0" position="0 0.45 -0.2" color="#2b142c"></a-box>
+            <!-- Caja 1 (base, la más grande) -->
+            <a-box width="2.4" height="0.3" depth="1.0" position="0 0.15 0.5"
+                   material="color: #7b2cbf; roughness: 0.8; metalness: 0"></a-box>
 
-          <!-- Video vertical sobre el nivel superior -->
-          <a-video class="ar-video" src="#vid-calavera" width="1.4" height="0.9"
-                   position="0 1.05 -0.2" rotation="0 0 0"></a-video>
+            <!-- Caja 2 (nivel superior, más chica) -->
+            <a-box width="1.8" height="0.3" depth="0.7" position="0 0.45 0.35"
+                   material="color: #ffb300; roughness: 0.8; metalness: 0"></a-box>
+
+            <!-- Video parado sobre la caja 2 -->
+            <a-video class="ar-video" src="#vid-calavera" width="1.4" height="0.9"
+                     position="0 1.05 0.35"></a-video>
+          </a-entity>
         </a-entity>
       </a-entity>
     </a-marker>
+
+    <!-- Luces: dan volumen (caras con distinto brillo) a las cajas -->
+    <a-light type="ambient" color="#ffffff" intensity="0.65"></a-light>
+    <a-light type="directional" color="#ffffff" intensity="0.9" position="0 3 2"></a-light>
 
     <a-entity camera></a-entity>
   </a-scene>
