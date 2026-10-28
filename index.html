@@ -419,6 +419,98 @@
       }
     });
 
+    // ===== DECORACIÓN: PAN DE MUERTO Y CALAVERA DE AZÚCAR (hechos con figuras básicas) =====
+    function agregar(padre, tag, attrs) {
+      const el = document.createElement(tag);
+      Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+      padre.appendChild(el);
+      return el;
+    }
+
+    // Uso: <a-entity pan-muerto position="x y z">  (el origen es la base del pan)
+    AFRAME.registerComponent('pan-muerto', {
+      init: function () {
+        const MAT = function (c) { return 'color: ' + c + '; roughness: 0.9; metalness: 0'; };
+
+        // Cuerpo: media esfera achatada, dorado
+        agregar(this.el, 'a-sphere', {
+          radius: '0.17', 'segments-width': '14', 'segments-height': '10',
+          position: '0 0.02 0', scale: '1 0.6 1', material: MAT('#c97a2b')
+        });
+        // Bolita de arriba
+        agregar(this.el, 'a-sphere', {
+          radius: '0.035', 'segments-width': '10', 'segments-height': '8',
+          position: '0 0.145 0', material: MAT('#e0a050')
+        });
+        // Cuatro "huesitos" que bajan por la cubierta, con una puntita redonda
+        [0, 90, 180, 270].forEach(function (ang) {
+          const giro = agregar(this.el, 'a-entity', { rotation: '0 ' + ang + ' 0' });
+          agregar(giro, 'a-cylinder', {
+            radius: '0.017', height: '0.13', 'segments-radial': '8',
+            position: '0.08 0.12 0', rotation: '0 0 72', material: MAT('#e0a050')
+          });
+          agregar(giro, 'a-sphere', {
+            radius: '0.022', 'segments-width': '8', 'segments-height': '6',
+            position: '0.145 0.085 0', material: MAT('#e0a050')
+          });
+        }, this);
+      }
+    });
+
+    // Uso: <a-entity calavera-azucar position="x y z">  (origen en la base; mira hacia +Z)
+    AFRAME.registerComponent('calavera-azucar', {
+      init: function () {
+        const MAT = function (c) { return 'color: ' + c + '; roughness: 0.7; metalness: 0'; };
+        const cr = agregar(this.el, 'a-entity', { position: '0 0.13 0' });
+
+        // Cráneo y mandíbula
+        agregar(cr, 'a-sphere', {
+          radius: '0.1', 'segments-width': '14', 'segments-height': '10',
+          scale: '1 1.05 0.9', material: MAT('#fffaf0')
+        });
+        agregar(cr, 'a-box', {
+          width: '0.11', height: '0.05', depth: '0.08',
+          position: '0 -0.085 0.02', material: MAT('#fffaf0')
+        });
+        // Dientes (línea oscura y rayitas)
+        agregar(cr, 'a-box', { width: '0.1', height: '0.006', depth: '0.006', position: '0 -0.085 0.062', material: MAT('#333333') });
+        [-0.03, 0, 0.03].forEach(function (x) {
+          agregar(cr, 'a-box', { width: '0.005', height: '0.04', depth: '0.006', position: x + ' -0.085 0.062', material: MAT('#333333') });
+        });
+        // Ojos: cuenca oscura con aro de color
+        [-1, 1].forEach(function (lado) {
+          agregar(cr, 'a-sphere', {
+            radius: '0.024', 'segments-width': '8', 'segments-height': '6',
+            position: (lado * 0.04) + ' 0.015 0.082', scale: '1 1 0.5', material: MAT('#111111')
+          });
+          agregar(cr, 'a-torus', {
+            radius: '0.032', 'radius-tubular': '0.007', 'segments-radial': '6', 'segments-tubular': '14',
+            position: (lado * 0.04) + ' 0.015 0.082', material: MAT(lado < 0 ? '#ff4fa3' : '#26c6da')
+          });
+        });
+        // Nariz
+        agregar(cr, 'a-sphere', {
+          radius: '0.014', 'segments-width': '6', 'segments-height': '6',
+          position: '0 -0.03 0.088', scale: '1 1.4 0.6', material: MAT('#222222')
+        });
+        // Florecita en la frente
+        agregar(cr, 'a-sphere', { radius: '0.014', 'segments-width': '8', 'segments-height': '6', position: '0 0.062 0.078', material: MAT('#ff4fa3') });
+        [[0.026, 0], [-0.026, 0], [0, 0.026], [0, -0.026]].forEach(function (d) {
+          agregar(cr, 'a-sphere', {
+            radius: '0.011', 'segments-width': '6', 'segments-height': '5',
+            position: d[0] + ' ' + (0.062 + d[1]) + ' 0.074', material: MAT('#ffb300')
+          });
+        });
+        // Puntitos de colores en las mejillas
+        [[-0.066, '#26c6da'], [0.066, '#ff8c00']].forEach(function (c) {
+          agregar(cr, 'a-sphere', {
+            radius: '0.012', 'segments-width': '6', 'segments-height': '5',
+            position: c[0] + ' -0.035 0.066', material: MAT(c[1])
+          });
+        });
+      }
+    });
+
     // ===== AJUSTE DE ORIENTACIÓN, INCLINACIÓN Y TAMAÑO =====
     // Rotar:    gira el conjunto sobre el marcador (de 90 en 90).
     // Inclinar: 90 = el altar se ve totalmente de frente desde arriba;
@@ -507,9 +599,13 @@
             <!-- Velas al frente, sobre la caja 1 -->
             <a-entity velas="cantidad: 5; ancho: 2.0" position="0 0.3 0.85"></a-entity>
 
+            <!-- Pan de muerto y calavera de azúcar sobre la caja 2 (al frente del video) -->
+            <a-entity pan-muerto position="-0.55 0.6 0.5"></a-entity>
+            <a-entity calavera-azucar position="0.55 0.6 0.5"></a-entity>
+
             <!-- Video parado sobre la caja 2 -->
             <a-video class="ar-video" src="#vid-pan" width="1.4" height="0.9"
-                     position="0 1.05 0.35"></a-video>
+                     position="0 1.05 0.12"></a-video>
           </a-entity>
         </a-entity>
       </a-entity>
@@ -535,9 +631,13 @@
             <!-- Velas al frente, sobre la caja 1 -->
             <a-entity velas="cantidad: 5; ancho: 2.0" position="0 0.3 0.85"></a-entity>
 
+            <!-- Pan de muerto y calavera de azúcar sobre la caja 2 (al frente del video) -->
+            <a-entity pan-muerto position="-0.55 0.6 0.5"></a-entity>
+            <a-entity calavera-azucar position="0.55 0.6 0.5"></a-entity>
+
             <!-- Video parado sobre la caja 2 -->
             <a-video class="ar-video" src="#vid-calavera" width="1.4" height="0.9"
-                     position="0 1.05 0.35"></a-video>
+                     position="0 1.05 0.12"></a-video>
           </a-entity>
         </a-entity>
       </a-entity>
