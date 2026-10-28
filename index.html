@@ -305,10 +305,7 @@
     let contentScale = 1.5;
 
     function aplicarAjuste() {
-      document.querySelectorAll('.ar-video').forEach(function (el) {
-        el.setAttribute('rotation', '-90 0 ' + contentRot);
-      });
-      document.querySelectorAll('.altar').forEach(function (el) {
+      document.querySelectorAll('.ar-rot').forEach(function (el) {
         el.setAttribute('rotation', '0 ' + contentRot + ' 0');
       });
       document.querySelectorAll('.ar-group').forEach(function (el) {
@@ -363,16 +360,16 @@
     <a-marker type="pattern" url="pattern-PanMuertosIC.patt?v=3" id="marker-pan" ar-controller
               smooth="true" smooth-count="8" smooth-tolerance="0.01" smooth-threshold="2">
       <a-entity class="ar-group" id="group-pan" scale="1.5 1.5 1.5" visible="false">
+        <a-entity class="ar-rot" rotation="0 0 0">
 
-        <!-- Altar de dos niveles (el de abajo más grande, el de arriba más chico) -->
-        <a-entity class="altar" rotation="0 0 0">
-          <a-box width="2.4" height="0.3" depth="1.6" position="0 0.15 0" material="opacity:0.5; color:purple;"></a-box>
-          <a-box width="1.8" height="0.3" depth="1.1" position="0 0.45 0" material="opacity:0.5; color:orange;"></a-box>
+          <!-- Altar de dos niveles, en la parte de ABAJO (abajo el más grande, arriba el más chico) -->
+          <a-box width="2.4" height="0.3" depth="1.4" position="0 0.15 0" material="opacity:0.5; color:purple;"></a-box>
+          <a-box width="1.9" height="0.3" depth="0.9" position="0 0.45 0" material="opacity:0.5; color:orange;"></a-box>
+
+          <!-- Video PARADO, justo encima del altar (base del video a y = 0.6) -->
+          <a-video class="ar-video" src="#vid-pan" width="1.6" height="0.9"
+                   position="0 1.05 0" rotation="0 0 0"></a-video>
         </a-entity>
-
-        <!-- Video sobre el altar -->
-        <a-video class="ar-video" src="#vid-pan" width="1.6" height="0.9"
-                 position="0 0.62 0" rotation="-90 0 0"></a-video>
       </a-entity>
     </a-marker>
 
@@ -380,16 +377,16 @@
     <a-marker type="pattern" url="pattern-CalaveraIC.patt?v=3" id="marker-calavera" ar-controller
               smooth="true" smooth-count="8" smooth-tolerance="0.01" smooth-threshold="2">
       <a-entity class="ar-group" id="group-calavera" scale="1.5 1.5 1.5" visible="false">
+        <a-entity class="ar-rot" rotation="0 0 0">
 
-        <!-- Altar de dos niveles (el de abajo más grande, el de arriba más chico) -->
-        <a-entity class="altar" rotation="0 0 0">
-          <a-box width="2.4" height="0.3" depth="1.6" position="0 0.15 0" material="opacity:0.5; color:purple;"></a-box>
-          <a-box width="1.8" height="0.3" depth="1.1" position="0 0.45 0" material="opacity:0.5; color:orange;"></a-box>
+          <!-- Altar de dos niveles, en la parte de ABAJO (abajo el más grande, arriba el más chico) -->
+          <a-box width="2.4" height="0.3" depth="1.4" position="0 0.15 0" material="opacity:0.5; color:purple;"></a-box>
+          <a-box width="1.9" height="0.3" depth="0.9" position="0 0.45 0" material="opacity:0.5; color:orange;"></a-box>
+
+          <!-- Video PARADO, justo encima del altar (base del video a y = 0.6) -->
+          <a-video class="ar-video" src="#vid-calavera" width="1.6" height="0.9"
+                   position="0 1.05 0" rotation="0 0 0"></a-video>
         </a-entity>
-
-        <!-- Video sobre el altar -->
-        <a-video class="ar-video" src="#vid-calavera" width="1.6" height="0.9"
-                 position="0 0.62 0" rotation="-90 0 0"></a-video>
       </a-entity>
     </a-marker>
 
