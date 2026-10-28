@@ -200,7 +200,7 @@
     }
 
     function ocultarVideos() {
-      document.querySelectorAll('a-video').forEach(function (el) { el.setAttribute('visible', 'false'); });
+      document.querySelectorAll('.ar-group').forEach(function (el) { el.setAttribute('visible', 'false'); });
       document.querySelectorAll('video').forEach(function (vid) { vid.pause(); });
     }
 
@@ -281,7 +281,7 @@
       if (!esPan && !esCal) return;
 
       const vid = document.getElementById(esPan ? 'vid-pan' : 'vid-calavera');
-      document.getElementById(esPan ? 'display-pan' : 'display-calavera').setAttribute('visible', 'true');
+      document.getElementById(esPan ? 'group-pan' : 'group-calavera').setAttribute('visible', 'true');
 
       dbg('Reproduciendo ' + vid.id + ' (readyState=' + vid.readyState + ')');
       vid.play().then(function () {
@@ -305,11 +305,16 @@
     let contentScale = 1.5;
 
     function aplicarAjuste() {
-      document.querySelectorAll('.ar-content').forEach(function (el) {
+      document.querySelectorAll('.ar-video').forEach(function (el) {
         el.setAttribute('rotation', '-90 0 ' + contentRot);
+      });
+      document.querySelectorAll('.altar').forEach(function (el) {
+        el.setAttribute('rotation', '0 ' + contentRot + ' 0');
+      });
+      document.querySelectorAll('.ar-group').forEach(function (el) {
         el.setAttribute('scale', contentScale + ' ' + contentScale + ' ' + contentScale);
       });
-      dbg('Ajuste -> rotation="-90 0 ' + contentRot + '"  scale="' + contentScale.toFixed(2) + '"', 'warn');
+      dbg('Ajuste -> rotación=' + contentRot + '  escala=' + contentScale.toFixed(2), 'warn');
     }
     function rotarContenido() { contentRot = (contentRot + 90) % 360; aplicarAjuste(); }
     function cambiarEscala(f) { contentScale = Math.max(0.3, Math.min(6, contentScale * f)); aplicarAjuste(); }
@@ -357,15 +362,35 @@
     <!-- Marcador 1: Pan de Muerto -->
     <a-marker type="pattern" url="pattern-PanMuertosIC.patt?v=3" id="marker-pan" ar-controller
               smooth="true" smooth-count="8" smooth-tolerance="0.01" smooth-threshold="2">
-      <a-video class="ar-content" src="#vid-pan" id="display-pan" width="1.6" height="0.9"
-               position="0 0.1 0" rotation="-90 0 0" scale="1.5 1.5 1.5" visible="false"></a-video>
+      <a-entity class="ar-group" id="group-pan" scale="1.5 1.5 1.5" visible="false">
+
+        <!-- Altar de dos niveles (el de abajo más grande, el de arriba más chico) -->
+        <a-entity class="altar" rotation="0 0 0">
+          <a-box width="2.4" height="0.2" depth="1.6" position="0 0.1 0" color="#6a1b9a"></a-box>
+          <a-box width="1.8" height="0.2" depth="1.1" position="0 0.3 0" color="#ff8c00"></a-box>
+        </a-entity>
+
+        <!-- Video sobre el altar -->
+        <a-video class="ar-video" src="#vid-pan" width="1.6" height="0.9"
+                 position="0 0.42 0" rotation="-90 0 0"></a-video>
+      </a-entity>
     </a-marker>
 
     <!-- Marcador 2: Calaverita -->
     <a-marker type="pattern" url="pattern-CalaveraIC.patt?v=3" id="marker-calavera" ar-controller
               smooth="true" smooth-count="8" smooth-tolerance="0.01" smooth-threshold="2">
-      <a-video class="ar-content" src="#vid-calavera" id="display-calavera" width="1.6" height="0.9"
-               position="0 0.1 0" rotation="-90 0 0" scale="1.5 1.5 1.5" visible="false"></a-video>
+      <a-entity class="ar-group" id="group-calavera" scale="1.5 1.5 1.5" visible="false">
+
+        <!-- Altar de dos niveles (el de abajo más grande, el de arriba más chico) -->
+        <a-entity class="altar" rotation="0 0 0">
+          <a-box width="2.4" height="0.2" depth="1.6" position="0 0.1 0" color="#6a1b9a"></a-box>
+          <a-box width="1.8" height="0.2" depth="1.1" position="0 0.3 0" color="#ff8c00"></a-box>
+        </a-entity>
+
+        <!-- Video sobre el altar -->
+        <a-video class="ar-video" src="#vid-calavera" width="1.6" height="0.9"
+                 position="0 0.42 0" rotation="-90 0 0"></a-video>
+      </a-entity>
     </a-marker>
 
     <a-entity camera></a-entity>
